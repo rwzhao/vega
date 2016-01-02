@@ -15,9 +15,9 @@ var compile = expr.compiler(args, {
     fn.eventGroup = 'event.vg.getGroup';
     fn.eventX     = 'event.vg.getX';
     fn.eventY     = 'event.vg.getY';
-    fn.open       = 'window.open';
     fn.scale      = scaleGen(codegen, false);
     fn.iscale     = scaleGen(codegen, true);
+    fn.open       = openGen(codegen);
     fn.inrange    = 'this.defs.inrange';
     fn.format     = 'this.defs.format';
     fn.timeFormat = 'this.defs.timeFormat';
@@ -30,10 +30,37 @@ var compile = expr.compiler(args, {
       'inrange':    inrange,
       'format':     numberFormat,
       'timeFormat': timeFormat,
-      'utcFormat':  utcFormat
+      'utcFormat':  utcFormat,
+      'open':       windowOpen
     };
   }
 });
+
+function openGen(codegen) {
+  return function (args) {
+    args = args.map(codegen);
+    var n = args.length;
+    if (n < 1 || n > 2) {
+      throw Error("open takes exactly 1 or 2 arguments.");
+    }
+    return 'this.defs.open(this.model, ' +
+      args[0] + (n > 1 ? ',' + args[1] : '') + ')';
+  };
+}
+
+function windowOpen(model, url, name) {
+  if (window && window.open) {
+    var opt = dl.extend({url: url}, model.config().load),
+        uri = dl.load.sanitizeUrl(opt);
+    if (uri) {
+      window.open(uri, name);
+    } else {
+      throw Error('Invalid URL: ' + opt.url);
+    }
+  } else {
+    throw Error("open can only be invoked in a browser.")
+  }
+}
 
 function scaleGen(codegen, invert) {
   return function(args) {

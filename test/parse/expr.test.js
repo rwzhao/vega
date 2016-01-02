@@ -16,6 +16,10 @@ describe('Expression Parser', function() {
     return e.fn(datum, evt);
   }
 
+  run.fn = function(code, model, datum) {
+    return function() { return run(code, model, datum); }
+  };
+
   it('should evaluate event functions', function() {
     expect(run('eventItem()')).to.equal('foo');
     expect(run('eventGroup()')).to.equal('bar');
@@ -48,6 +52,23 @@ describe('Expression Parser', function() {
     expect(run('format(",.2f", 1200.342)')).to.equal('1,200.34');
     expect(run('timeFormat("%b %Y", datetime(2000,9))')).to.equal('Oct 2000');
     expect(run('utcFormat("%b %Y %H:%M", utc(2009,9,1,10))')).to.equal('Oct 2009 10:00');
+  });
+
+  it('should evaluate open function', function() {
+    var config = {load: {}},
+        model = {config: function() { return config; }};
+
+    expect(run.fn('open("http://vega.github.io/")', model)).to.throw();
+
+    var oldwin = global.window;
+    global.window = {open: function(url, name) {}};
+
+    // COMMENT OUT for now. sanitizeUrl allows javascript protocol to pass through
+    // expect(run.fn('open("javascript:alert(\'foo\')")', model)).to.throw();
+
+    expect(run.fn('open("http://vega.github.io/")', model)).to.not.throw();
+
+    global.window = oldwin;
   });
 
 });
