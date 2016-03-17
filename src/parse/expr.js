@@ -1,7 +1,7 @@
 var dl = require('datalib'),
     template = dl.template,
     expr = require('vega-expression'),
-    args = ['datum', 'event', 'signals'];
+    args = ['datum', 'event', 'group', 'parent'];
 
 var compile = expr.compiler(args, {
   idWhiteList: args,
@@ -20,6 +20,7 @@ var compile = expr.compiler(args, {
     fn.iscale     = scaleGen(codegen, true);
     fn.inrange    = 'this.defs.inrange';
     fn.indata     = indataGen(codegen);
+    fn.inrangeselection = inRangeSelectionGen(codegen);
     fn.format     = 'this.defs.format';
     fn.timeFormat = 'this.defs.timeFormat';
     fn.utcFormat  = 'this.defs.utcFormat';
@@ -30,6 +31,7 @@ var compile = expr.compiler(args, {
       'scale':      scale,
       'inrange':    inrange,
       'indata':     indata,
+      'inrangeselection': inRangeSelection,
       'format':     numberFormat,
       'timeFormat': timeFormat,
       'utcFormat':  utcFormat
@@ -86,7 +88,7 @@ function indataGen(codegen) {
     }
 
     args = args.map(codegen);
-    return 'this.defs.indata(this.model,' + 
+    return 'this.defs.indata(this.model,' +
       args[0] + ',' + args[1] + ',' + args[2] + ')';
   };
 }
@@ -95,6 +97,54 @@ function indata(model, dataname, val, field) {
   var data = model.data(dataname),
       index = data.getIndex(field);
   return index[val] > 0;
+}
+
+var SINGLE = 'single',
+    UNION  = 'union',
+    UNIONO = 'union_others',
+    INTERSECT  = 'intersect',
+    INTERSECTO = 'intersect_others';
+
+function inRangeSelectionGen(codegen) {
+  return function(args, globals, fields, dataSources) {
+    var data = args[0].value;
+    dataSources[data] = 1;
+    args = args.map(codegen).join(', ');
+    return 'this.defs.inrangeselection(this.model, ' + args + ')';
+  };
+}
+
+function inRangeSelection(model, source, datum, resolve, key) {
+  var values = model.data(source).values(),
+      found = false,
+      i, len, d, x, y, start = 'min_', end = 'max_';
+
+  for (i=0, len=values.length; i<len; ++i) {
+    d = values[i];
+    x = d.x;
+    y = d.y;
+
+
+    // No brush
+    if ((!x || (x && d[start+x] === d[end+x])) &&
+        (!y || (y && d[start+y] === d[end+y]))) {
+      continue;
+    }
+
+    if (key === d.key && (resolve === UNIONO || resolve === INTERSECTO)) continue;
+
+    found = (!x || (x && inrange(datum[x], d[start+x], d[end+x]))) &&
+      (!y || (y && inrange(datum[y], d[start+y], d[end+y])));
+
+    // We have one tuple per selection. So, if we're union'ing and have found
+    // a tuple, early exit. If we're intersecting and we haven't found a tuple,
+    // early exit. And if we've only got a single, early exit for good measure!
+    if (found === true && (resolve === UNION || resolve === UNIONO)) break;
+    if (found === false && (resolve === INTERSECT || resolve === INTERSECTO)) break;
+    if (resolve === SINGLE) break;
+  }
+
+  return found;
 }
 
 function numberFormat(specifier, v) {

@@ -186,7 +186,7 @@ function rule(model, name, rules, exprs) {
       deps.signals.push.apply(deps.signals, exprFn.globals);
       deps.data.push.apply(deps.data, exprFn.dataSources);
 
-      code += "if (exprs[" + exprs.length + "](item.datum, null)) {" +
+      code += "if (exprs[" + exprs.length + "](item.datum, null, group, group.datum)) {" +
           "\n    d += set(o, "+dl.str(name)+", " +ref.val+");";
       code += rules[i+1] ? "\n  } else " : "  }";
 

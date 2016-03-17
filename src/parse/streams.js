@@ -115,7 +115,7 @@ function parseStreams(view) {
         }
       }
     }
-    names.root = view.model().scene().items[0];
+    names.scene = view.model().scene().items[0];
 
     evt.vg = Object.create(vgEvent);
     evt.vg.group = group;
