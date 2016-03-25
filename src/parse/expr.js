@@ -99,12 +99,6 @@ function indata(model, dataname, val, field) {
   return index[val] > 0;
 }
 
-var SINGLE = 'single',
-    UNION  = 'union',
-    UNIONO = 'union_others',
-    INTERSECT  = 'intersect',
-    INTERSECTO = 'intersect_others';
-
 function inRangeSelectionGen(codegen) {
   return function(args, globals, fields, dataSources) {
     var data = args[0].value;
@@ -114,37 +108,43 @@ function inRangeSelectionGen(codegen) {
   };
 }
 
-function inRangeSelection(model, source, datum, resolve, key) {
+var SINGLE = 'single',
+    UNION  = 'union',
+    UNIONO = 'union_others',
+    INTERSECT  = 'intersect',
+    INTERSECTO = 'intersect_others';
+
+function inRangeSelection(model, source, datum, resolve) {
   var values = model.data(source).values(),
       found = false,
-      i, len, d, x, y, start = 'min_', end = 'max_';
+      start = 'min_', end = 'max_';
 
-  for (i=0, len=values.length; i<len; ++i) {
-    d = values[i];
-    x = d.x;
-    y = d.y;
-
-
-    // No brush
-    if ((!x || (x && d[start+x] === d[end+x])) &&
-        (!y || (y && d[start+y] === d[end+y]))) {
-      continue;
-    }
-
-    if (key === d.key && (resolve === UNIONO || resolve === INTERSECTO)) continue;
-
-    found = (!x || (x && inrange(datum[x], d[start+x], d[end+x]))) &&
-      (!y || (y && inrange(datum[y], d[start+y], d[end+y])));
-
-    // We have one tuple per selection. So, if we're union'ing and have found
-    // a tuple, early exit. If we're intersecting and we haven't found a tuple,
-    // early exit. And if we've only got a single, early exit for good measure!
-    if (found === true && (resolve === UNION || resolve === UNIONO)) break;
-    if (found === false && (resolve === INTERSECT || resolve === INTERSECTO)) break;
-    if (resolve === SINGLE) break;
+  // We should only have one value in our dataset.
+  if (values.length > 1) {
+    throw Error('inRangeSelection dataset should have only 1 value');
   }
 
-  return found;
+  var empty = (resolve === UNION || resolve === UNIONO) ? false : true;
+
+  // An empty selection should return true.
+  if (!values.length) {
+    return empty;
+  }
+
+  var d = values[0], x = d.x, y = d.y;
+
+  // We have a brush, but it is "empty"
+  if ((!x || (x && (d[start+x] === d[end+x] || isNaN(d[start+x])))) &&
+      (!y || (y && (d[start+y] === d[end+y] || isNaN(d[start+y]))))) {
+    return empty;
+  }
+
+  if ((!x || (x && inrange(datum[x], d[start+x], d[end+x]))) &&
+      (!y || (y && inrange(datum[y], d[start+y], d[end+y])))) {
+    return true;
+  }
+
+  return false;
 }
 
 function numberFormat(specifier, v) {
