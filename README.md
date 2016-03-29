@@ -1,3 +1,5 @@
+#(JS)用JSON描述的(交互)可视化库Vega
+
 Vega: A Visualization Grammar
 ====
 [![Build Status](https://travis-ci.org/vega/vega.svg?branch=master)](https://travis-ci.org/vega/vega)
